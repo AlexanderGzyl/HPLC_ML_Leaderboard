@@ -1,28 +1,28 @@
-# HPLC_ML_Leaderboard
+# HPLC_ML_Leaderboard:
 This repository serves as the central hub for the HPLC automation project's leaderboard. This project focuses on benchmarking machine learning models for predicting retention times in chromatographic enantiomer separation. The leaderboard provides a transparent way to monitor progress, compare different modeling approaches, and recognize top-performing contributions. Hosted on a Streamlit app, it will also offer researchers direct access to the models for making predictions, thereby accelerating the optimization of enantiomer separations. The top models will be capable of suggesting conditions most likely to yield successful results.
 
 # Pitch: Unlock Faster, Smarter Chiral Separation Optimization with Machine Learning
 
 Optimizing enantiomer separations using normal-phase chiral HPLC is notoriously complex and time-consuming. The traditional approach relies heavily on empirical trial-and-error, testing various combinations of stationary phases, mobile phase compositions, additives, and temperatures. This iterative process consumes valuable time, expensive chiral columns, and significant amounts of solvent, slowing down drug development and analysis.
 
-But what if you could move beyond intuition and guesswork?
+**But what if you could move beyond intuition and guesswork?**
 
 Machine learning offers a powerful, data-driven solution to this challenge. By training models on experimental separation data – including failed attempts and successful runs – we can capture the intricate, non-linear relationships between chromatographic conditions and separation outcomes (like resolution and retention).
 
-Imagine:
+**Imagine:**
 
 Instead of randomly trying new conditions, you could predict the separation quality before running the experiment.
 The model could suggest the most promising conditions to test, drastically reducing the number of experiments needed to find a baseline separation or even the optimal conditions.
 You could explore the multi-dimensional experimental space much more efficiently, identifying optimal zones that might be missed by manual tuning.
 
-# About the Dataset
+# About The Dataset:
 The leaderboard tracks the performance of different styles machine learning models on a HPLC retentention time dataset consisting of enantiomers. 
 The dataset was created by Xu, H., Lin, J., Zhang, D. et al. (2023, [https://doi.org/10.1038/s41467-023-38853-3https://www.nature.com/articles/s41467-023-38853-3](https://doi.org/10.1038/s41467-023-38853-3https://www.nature.com/articles/s41467-023-38853-3)
 The dataset constitutes the retention time of 25,847 molecules recorded in the form of SMILES, which contains 11,720 pairs of enantiomers,  polar modifier proportion, and chiral stationary phase. 
 
 
 
-# Background
+# Background:
 
 According to the No Free Lunch Theorem (NFLT) in optimization and machine learning, when performance is averaged across the set of all possible problems, every algorithm performs equally well. More formally, for a uniform distribution over all possible problems, no algorithm is superior to any other on average. The practical consequence of this is profound: there is no single algorithm that is universally the best for every possible task. An algorithm that performs exceptionally well on one type of problem will, by necessity when averaged over all problems, perform poorly on others. This is precisely why benchmarking is vital when applying machine learning to a specific, real-world domain. Since real-world problems are not drawn uniformly from the set of all possible problems – they possess specific structures and characteristics – an algorithm's performance will vary depending on how well it is suited to that structure. The field of chemoinformatics serves as an excellent example of this. Researchers must make many choices regarding how to represent chemical information (descriptors) and which model architecture to use. This challenge is particularly evident in problems like enantiomer separation prediction, where diverse methods exist for describing the enantiomers and the stationary phase. To find the most effective approach for this specific task, empirical benchmarking on relevant data is indispensable, as the NFLT tells us we cannot assume a method that worked elsewhere will be optimal here.
 

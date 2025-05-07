@@ -46,7 +46,12 @@ The polar modifier in the mobile phase can influence the interactions between th
 
 
 
+## **Environment setup**
 
+```bash
+conda env create -f environment.yml
+conda activate hplc-ml
+```
 
 
 

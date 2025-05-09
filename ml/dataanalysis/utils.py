@@ -4,6 +4,7 @@ from rdkit.Chem import AllChem,rdMolDescriptors
 from rdkit.DataStructs import TanimotoSimilarity
 from rdkit.Chem import rdFingerprintGenerator
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def grand_tanimoto_similarity_mean(smiles_series,smiles_series_to_compare):
@@ -257,6 +258,88 @@ def plot_rotatable_bonds_per_molecule(smiles_list):
 
     if invalid_smiles_count > 0:
         print(f"\nNote: Encountered {invalid_smiles_count} invalid SMILES string(s) which were skipped.")
+
+
+def plot_rotatable_bonds_vs_property(df: pd.DataFrame, smiles_col: str = 'smiles', property_col: str = 'RT'):
+    """
+    Calculates the number of rotatable bonds for molecules in a DataFrame
+    and plots it against a specified property column.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing SMILES and the property.
+        smiles_col (str): The name of the column containing SMILES strings (default: 'smiles').
+        property_col (str): The name of the column containing the property values (default: 'RT').
+    """
+    # --- Input Validation ---
+    if smiles_col not in df.columns:
+        print(f"Error: DataFrame must contain a '{smiles_col}' column.")
+        return
+    if property_col not in df.columns:
+        print(f"Error: DataFrame must contain a '{property_col}' column.")
+        return
+
+    # --- Data Processing ---
+    num_rotatable_bonds_list = []
+    property_values_list = []
+    invalid_smiles_count = 0
+    processed_count = 0
+
+    # Iterate through DataFrame rows
+    for index, row in df.iterrows():
+        smiles = row[smiles_col]
+        property_value = row[property_col]
+
+        # Ensure property value is numerical and not NaN
+        if pd.isna(property_value) or not isinstance(property_value, (int, float)):
+            print(f"Warning: Skipping row {index} due to invalid or missing property value in column '{property_col}': {property_value}")
+            continue # Skip this row if property value is invalid
+
+        mol = Chem.MolFromSmiles(str(smiles)) # Ensure smiles is treated as string
+        if mol is not None:
+            try:
+                num_rotatable_bonds = rdMolDescriptors.CalcNumRotatableBonds(mol)
+                num_rotatable_bonds_list.append(num_rotatable_bonds)
+                property_values_list.append(property_value)
+                processed_count += 1
+            except Exception as e:
+                # Catch potential RDKit errors during descriptor calculation
+                print(f"Warning: Could not calculate rotatable bonds for SMILES '{smiles}' (row {index}). Error: {e}")
+                invalid_smiles_count += 1
+        else:
+            print(f"Warning: Invalid SMILES string skipped at row {index}: {smiles}")
+            invalid_smiles_count += 1
+
+    # --- Plotting ---
+    if not num_rotatable_bonds_list:
+        print("No valid data points processed to plot.")
+        return
+
+    plt.figure(figsize=(10, 6))
+
+    # Create a scatter plot
+    plt.scatter(num_rotatable_bonds_list, property_values_list, alpha=0.5) # alpha for transparency if points overlap
+
+    plt.xlabel('Number of Rotatable Bonds')
+    plt.ylabel(property_col) # Use the actual property column name for the y-label
+    plt.title(f'Number of Rotatable Bonds vs. {property_col}')
+    plt.grid(True, linestyle='--', alpha=0.6)
+
+    # Optional: Add correlation coefficient to the plot (requires numpy)
+    # if processed_count > 1:
+    #     correlation = np.corrcoef(num_rotatable_bonds_list, property_values_list)[0, 1]
+    #     plt.text(0.95, 0.95, f'Correlation: {correlation:.2f}',
+    #              verticalalignment='top', horizontalalignment='right',
+    #              transform=plt.gca().transAxes,
+    #              fontsize=10, bbox=dict(boxstyle='round,pad=0.5', fc='wheat', alpha=0.5))
+
+
+    plt.tight_layout()
+    plt.show()
+
+    print(f"\nProcessed {processed_count} valid molecules.")
+    if invalid_smiles_count > 0:
+        print(f"Skipped {invalid_smiles_count} rows due to invalid SMILES or calculation errors.")
+
 
 
 

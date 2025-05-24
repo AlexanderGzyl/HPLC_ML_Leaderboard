@@ -3,6 +3,8 @@ import numpy as np
 from rdkit.Chem import AllChem,rdMolDescriptors
 from rdkit.DataStructs import TanimotoSimilarity
 from rdkit.Chem import rdFingerprintGenerator
+from rdkit import Chem
+from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -342,4 +344,132 @@ def plot_rotatable_bonds_vs_property(df: pd.DataFrame, smiles_col: str = 'smiles
 
 
 
+
+
+def get_chiral_info(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None, False, None # Invalid SMILES
+
+    chiral_centers = Chem.FindMolChiralCenters(mol, includeUnassigned=True)
+    is_chiral = bool(chiral_centers)
+
+    enantiomer_smiles = None
+    if is_chiral:
+        # Create a copy to modify for enantiomer
+        enantiomer_mol = Chem.Mol(mol)
+        # Invert all chiral centers
+        for atom_idx, _ in chiral_centers:
+            atom = enantiomer_mol.GetAtomWithIdx(atom_idx)
+            stereo_tag = atom.GetChiralTag()
+            if stereo_tag == Chem.ChiralType.CHI_TETRAHEDRAL_CW:
+                atom.SetChiralTag(Chem.ChiralType.CHI_TETRAHEDRAL_CCW)
+            elif stereo_tag == Chem.ChiralType.CHI_TETRAHEDRAL_CCW:
+                atom.SetChiralTag(Chem.ChiralType.CHI_TETRAHEDRAL_CW)
+
+        # Re-canonicalize to get a consistent SMILES for the enantiomer
+        enantiomer_smiles = Chem.MolToSmiles(enantiomer_mol, isomericSmiles=True)
+
+        # Check for meso compound: if original and enantiomer are identical, it's meso
+        if Chem.MolToSmiles(mol, isomericSmiles=True) == enantiomer_smiles:
+            return mol, False, None # It's a meso compound, not truly chiral for enantiomer pairing
+
+    return mol, is_chiral, enantiomer_smiles
+
+
+
+
+def to_canonical_smiles(smiles):
+    """Helper function to convert a single SMILES to canonical form."""
+    try:
+        mol = Chem.MolFromSmiles(str(smiles)) # Ensure input is string
+        if mol is not None:
+            # Use isomericSmiles=True to preserve stereochemical information
+            return Chem.MolToSmiles(mol, isomericSmiles=True)
+        else:
+            return None  # Return None for invalid SMILES
+    except:
+        return None # Catch any other potential RDKit errors
+    
+def _generate_enantiomer_mol(mol: Chem.Mol) -> Chem.Mol:
+    """
+    Helper function to generate an RDKit molecule object representing the enantiomer
+    of the input molecule by inverting all tetrahedral chiral centers.
+    """
+    enantiomer_mol = Chem.Mol(mol)
+    # Ensure 2D coordinates are computed, as it can sometimes help RDKit's internal stereochem handling
+    Chem.AllChem.Compute2DCoords(enantiomer_mol)
+
+    chiral_centers = Chem.FindMolChiralCenters(enantiomer_mol, includeUnassigned=True)
+
+    if not chiral_centers:
+        # If no tetrahedral chiral centers are found, the 'enantiomer' is the molecule itself.
+        # This covers achiral molecules and meso compounds.
+        return enantiomer_mol
+
+    # Invert the stereochemistry of each identified chiral center
+    for atom_idx, _ in chiral_centers:
+        atom = enantiomer_mol.GetAtomWithIdx(atom_idx)
+        stereo_tag = atom.GetChiralTag()
+        if stereo_tag == Chem.ChiralType.CHI_TETRAHEDRAL_CW:
+            atom.SetChiralTag(Chem.ChiralType.CHI_TETRAHEDRAL_CCW)
+        elif stereo_tag == Chem.ChiralType.CHI_TETRAHEDRAL_CCW:
+            atom.SetChiralTag(Chem.ChiralType.CHI_TETRAHEDRAL_CW)
+        # Handle unspecified (unassigned) chirality by setting to None, though FindMolChiralCenters
+        # with includeUnassigned=True should not usually return these as 'R' or 'S'.
+        elif stereo_tag == Chem.ChiralType.CHI_UNSPECIFIED:
+            pass # No action needed for unspecified centers
+
+    return enantiomer_mol
+def are_diastereomers(smiles1: str, smiles2: str) -> bool:
+    """
+    Checks if two molecules represented by SMILES strings are diastereomers.
+
+    Args:
+        smiles1 (str): SMILES string for the first molecule.
+        smiles2 (str): SMILES string for the second molecule.
+
+    Returns:
+        bool: True if the molecules are diastereomers, False otherwise.
+              Returns False if SMILES are invalid, identical, enantiomers,
+              or not even constitutional isomers.
+    """
+    mol1 = Chem.MolFromSmiles(smiles1)
+    mol2 = Chem.MolFromSmiles(smiles2)
+
+    if mol1 is None or mol2 is None:
+        print("Error: One or both SMILES strings are invalid.")
+        return False
+
+    # 1. Check for same connectivity (Are they constitutional isomers?)
+    # Generate canonical SMILES without stereochemistry for structural comparison
+    smi1_non_iso = Chem.MolToSmiles(mol1, isomericSmiles=False)
+    smi2_non_iso = Chem.MolToSmiles(mol2, isomericSmiles=False)
+
+    if smi1_non_iso != smi2_non_iso:
+        # print(f"DEBUG: Not constitutional isomers (non-iso SMILES differ: {smi1_non_iso} vs {smi2_non_iso})")
+        return False # They are not even constitutional isomers, so not stereoisomers.
+
+    # 2. Check if they are identical stereoisomers
+    # Generate canonical SMILES with stereochemistry for full comparison
+    smi1_iso = Chem.MolToSmiles(mol1, isomericSmiles=True)
+    smi2_iso = Chem.MolToSmiles(mol2, isomericSmiles=True)
+
+    if smi1_iso == smi2_iso:
+        # print(f"DEBUG: Molecules are identical stereoisomers (iso SMILES are same: {smi1_iso})")
+        return False # They are the same molecule stereochemically.
+
+    # 3. Check for enantiomeric relationship
+    # Generate the enantiomer of mol1 and get its canonical isomeric SMILES
+    enantiomer_of_mol1 = _generate_enantiomer_mol(mol1)
+    enantiomer_smi1_iso = Chem.MolToSmiles(enantiomer_of_mol1, isomericSmiles=True)
+
+    if enantiomer_smi1_iso == smi2_iso:
+        # print(f"DEBUG: Molecules are enantiomers (enantiomer of 1 matches 2).")
+        return False # They are enantiomers.
+
+    # If they pass all above checks (same connectivity, not identical, not enantiomers),
+    # then they must be diastereomers.
+    # print(f"DEBUG: Molecules are diastereomers.")
+    return True
 

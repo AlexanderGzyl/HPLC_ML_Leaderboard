@@ -1,5 +1,5 @@
 /ml/shareddata/dataset_charity_all_column.npy
-
+/notebooks
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

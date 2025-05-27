@@ -7,9 +7,24 @@ from rdkit import Chem
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
 import matplotlib.pyplot as plt
 import pandas as pd
+from collections import Counter
 
 
 def grand_tanimoto_similarity_mean(smiles_series,smiles_series_to_compare):
+    """Calculates the grand tanimoto similarity mean. Calculates the tanimotosimilarity of the smiles of 
+        One series compared to the other and obtains a mean. Then a final mean is taken to return a float.
+
+    This function takes the length and width of a rectangle and returns its
+    calculated area. It handles both positive and zero dimensions.
+
+    :param smiles_series: A series containing smiles
+    :type smiles_series: pandas Series
+    :param smiles_series_to_compare: The width of the rectangle. Must be non-negative.
+    :type smiles_series_to_compare: pandas Series
+    :returns: The the grand tanimoto similarity mean
+    :rtype: float
+
+    """
     mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2,fpSize=2048)
     fp_list = [mfpgen.GetFingerprint(Chem.MolFromSmiles(smiles)) for smiles in smiles_series]
     fp_list_compare = [mfpgen.GetFingerprint(Chem.MolFromSmiles(smiles)) for smiles in smiles_series_to_compare]
@@ -28,6 +43,13 @@ def grand_tanimoto_similarity_mean(smiles_series,smiles_series_to_compare):
 
 
 def tanimoto_similarity_mean(smiles_series,smiles_series_to_compare):
+    """Calculates the tanimotosimilarity of the smiles of 
+        One series compared to the other and obtains a mean for each smile
+
+    :param smiles_series: series of smiles
+    :param smiles_series_to_compare:a second set of smiles
+    :return: list of mean values calcualed for each smile
+    """
     mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2,fpSize=2048)
     fp_list = [mfpgen.GetFingerprint(Chem.MolFromSmiles(smiles)) for smiles in smiles_series]
     fp_list_compare = [mfpgen.GetFingerprint(Chem.MolFromSmiles(smiles)) for smiles in smiles_series_to_compare]
@@ -44,21 +66,15 @@ def tanimoto_similarity_mean(smiles_series,smiles_series_to_compare):
 
     return similarity_list
 
-from rdkit import Chem
-from collections import Counter
-
-from rdkit import Chem
-from collections import Counter
 
 def atom_counts(smiles):
     """
     Analyzes a molecule from its SMILES string to count atom types.
 
-    Args:
-        smiles (str): The SMILES string of the molecule.
+    :param smiles:SMILES string of the molecule.
 
-    Returns:
-        dict or None: A dictionary of atom counts if successful, otherwise None.
+    :return: A dictionary of atom counts if successful, otherwise None.
+        
     """
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
@@ -68,11 +84,9 @@ def atom_counts(smiles):
     return dict(atom_counts)
 
 def plot_atom_counts_from_smiles_list(smiles_list):
-    """
-    Analyzes a list of SMILES strings and plots the cumulative atom counts.
+    """Analyzes a list of SMILES strings and plots the cumulative atom counts.
 
-    Args:
-        smiles_list (list): A list of SMILES strings.
+    :param smiles_list: a list of  smiles
     """
     total_atom_counts = Counter()
     invalid_smiles_count = 0
@@ -113,12 +127,10 @@ def plot_atom_counts_from_smiles_list(smiles_list):
         print(f"\nNote: Encountered {invalid_smiles_count} invalid SMILES string(s) which were skipped.")
 
 def plot_num_atoms_per_molecule(smiles_list):
-    """
-    Calculates the number of atoms for each valid molecule in a list of SMILES
+    """Calculates the number of atoms for each valid molecule in a list of SMILES
     and plots a histogram of the distribution.
 
-    Args:
-        smiles_list (list): A list of SMILES strings.
+    :param smiles_list: _description_
     """
     num_atoms_list = []
     invalid_smiles_count = 0
@@ -156,13 +168,11 @@ def plot_num_atoms_per_molecule(smiles_list):
 
 
 def plot_stereogenic_centers_per_molecule(smiles_list):
-    """
-    Calculates the number of potential tetrahedral stereogenic centers
+    """Calculates the number of potential tetrahedral stereogenic centers
     for each valid molecule in a list of SMILES and plots a histogram
     of the distribution.
 
-    Args:
-        smiles_list (list): A list of SMILES strings.
+    :param smiles_list: list of smiles
     """
     num_chiral_centers_list = []
     invalid_smiles_count = 0
@@ -212,12 +222,10 @@ def plot_stereogenic_centers_per_molecule(smiles_list):
         print(f"\nNote: Encountered {invalid_smiles_count} invalid SMILES string(s) which were skipped.")
 
 def plot_rotatable_bonds_per_molecule(smiles_list):
-    """
-    Calculates the number of rotatable bonds for each valid molecule
+    """Calculates the number of rotatable bonds for each valid molecule
     in a list of SMILES and plots a histogram of the distribution.
 
-    Args:
-        smiles_list (list): A list of SMILES strings.
+    :param smiles_list: list of smiles
     """
     num_rotatable_bonds_list = []
     invalid_smiles_count = 0
@@ -263,14 +271,12 @@ def plot_rotatable_bonds_per_molecule(smiles_list):
 
 
 def plot_rotatable_bonds_vs_property(df: pd.DataFrame, smiles_col: str = 'smiles', property_col: str = 'RT'):
-    """
-    Calculates the number of rotatable bonds for molecules in a DataFrame
+    """Calculates the number of rotatable bonds for molecules in a DataFrame
     and plots it against a specified property column.
 
-    Args:
-        df (pd.DataFrame): Input DataFrame containing SMILES and the property.
-        smiles_col (str): The name of the column containing SMILES strings (default: 'smiles').
-        property_col (str): The name of the column containing the property values (default: 'RT').
+    :param df: dataframe with smiles and property
+    :param smiles_col: column named smiles
+    :param property_col: _description_, defaults to 'RT'
     """
     # --- Input Validation ---
     if smiles_col not in df.columns:
@@ -347,6 +353,11 @@ def plot_rotatable_bonds_vs_property(df: pd.DataFrame, smiles_col: str = 'smiles
 
 
 def get_chiral_info(smiles):
+    """Get the chiral information for each smile
+
+    :param smiles: _description_
+    :return: mol object, bool if it is chiral and enantiomer
+    """
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None, False, None # Invalid SMILES
@@ -380,7 +391,11 @@ def get_chiral_info(smiles):
 
 
 def to_canonical_smiles(smiles):
-    """Helper function to convert a single SMILES to canonical form."""
+    """Helper function to convert a single SMILES to canonical form.
+
+    :param smiles: smiles
+    :return: canonical smiles
+    """
     try:
         mol = Chem.MolFromSmiles(str(smiles)) # Ensure input is string
         if mol is not None:
@@ -392,9 +407,11 @@ def to_canonical_smiles(smiles):
         return None # Catch any other potential RDKit errors
     
 def _generate_enantiomer_mol(mol: Chem.Mol) -> Chem.Mol:
-    """
-    Helper function to generate an RDKit molecule object representing the enantiomer
+    """Helper function to generate an RDKit molecule object representing the enantiomer
     of the input molecule by inverting all tetrahedral chiral centers.
+
+    :param mol: chem mol object
+    :return: mol enantiomer object
     """
     enantiomer_mol = Chem.Mol(mol)
     # Ensure 2D coordinates are computed, as it can sometimes help RDKit's internal stereochem handling
@@ -422,17 +439,11 @@ def _generate_enantiomer_mol(mol: Chem.Mol) -> Chem.Mol:
 
     return enantiomer_mol
 def are_diastereomers(smiles1: str, smiles2: str) -> bool:
-    """
-    Checks if two molecules represented by SMILES strings are diastereomers.
+    """Checks if two molecules represented by SMILES strings are diastereomers.
 
-    Args:
-        smiles1 (str): SMILES string for the first molecule.
-        smiles2 (str): SMILES string for the second molecule.
-
-    Returns:
-        bool: True if the molecules are diastereomers, False otherwise.
-              Returns False if SMILES are invalid, identical, enantiomers,
-              or not even constitutional isomers.
+    :param smiles1: first smile
+    :param smiles2: second smile
+    :return: bool
     """
     mol1 = Chem.MolFromSmiles(smiles1)
     mol2 = Chem.MolFromSmiles(smiles2)

@@ -53,6 +53,9 @@ conda env create -f environment.yml
 conda activate hplc-ml
 ```
 
+Code adapted from: # https://github.com/woshixuhao/Retention-Time-Prediction-for-Chromatographic-Enantioseparation
+
+
 
 
 

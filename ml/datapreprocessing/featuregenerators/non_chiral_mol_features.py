@@ -2,7 +2,7 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors, AllChem
 import pandas as pd
 import numpy as np
-from typing import List, Tuple, Callable, Union
+from typing import List, Tuple, Callable, Union, Dict
 # testing
 smiles = [
     "F[C@H](Cl)Br",  # one enantiomer
@@ -164,30 +164,22 @@ def compute_3D_rdkit_descriptor_df(smiles_list: List[str]) -> pd.DataFrame:
 
     return pd.DataFrame(feature_data)
 
-
-def compute_flattened_coulomb_matrix_rdkit_descriptor_df(
-    smiles_list: List[str],
-    num_atoms: int = 20
-) -> Tuple[pd.DataFrame, List[str]]:
+def get_valid_molecules(smiles_list: List[str]) -> Tuple[List[Tuple[str, Chem.Mol]], List[str]]:
     """
-    Compute flattened Coulomb matrix vectors from SMILES strings.
+    Convert SMILES to RDKit molecules and embed them. Track SMILES that fail.
 
     Parameters
     ----------
     smiles_list : List[str]
-        List of SMILES strings to featurize.
-
-    num_atoms : int
-        Target number of atoms. Matrices are padded/truncated to num_atoms × num_atoms,
-        and the upper triangle is flattened.
+        List of SMILES strings.
 
     Returns
     -------
-    Tuple[pd.DataFrame, List[str]]
-        - DataFrame with flattened Coulomb matrix vectors.
+    Tuple[List[Tuple[str, Chem.Mol]], List[str]]
+        - List of (SMILES, embedded Mol) tuples.
         - List of SMILES that failed processing.
     """
-    feature_data = []
+    valid_mols = []
     failed_smiles = []
 
     for smi in smiles_list:
@@ -201,23 +193,45 @@ def compute_flattened_coulomb_matrix_rdkit_descriptor_df(
             failed_smiles.append(smi)
             continue
 
+        valid_mols.append((smi, mol))
+
+    return valid_mols, failed_smiles
+
+def compute_flattened_coulomb_matrix_features(
+    mols: List[Tuple[str, Chem.Mol]],
+    num_atoms: int
+) -> List[Dict[str, float]]:
+    """
+    Compute flattened Coulomb matrix features from valid RDKit molecules.
+
+    Parameters
+    ----------
+    mols : List[Tuple[str, Chem.Mol]]
+        List of (SMILES, RDKit Mol) tuples.
+
+    num_atoms : int
+        Target number of atoms.
+
+    Returns
+    -------
+    List[Dict[str, float]]
+        List of feature dictionaries for each molecule.
+    """
+    feature_data = []
+
+    for smi, mol in mols:
         try:
             n_atoms = mol.GetNumAtoms()
             matrix = rdMolDescriptors.CalcCoulombMat(mol, confId=0)
-
-            # Convert flat list to square matrix
             mat = np.array(matrix).reshape((n_atoms, n_atoms))
 
-            # Pad/truncate to target size
             padded = np.zeros((num_atoms, num_atoms))
             n = min(num_atoms, n_atoms)
             padded[:n, :n] = mat[:n, :n]
 
-            # Flatten upper triangle
             iu = np.triu_indices(num_atoms)
             flat = padded[iu]
 
-            # Build row
             row = {"SMILES": smi}
             for i, v in enumerate(flat):
                 row[f"Coulomb_{i}"] = v
@@ -225,10 +239,8 @@ def compute_flattened_coulomb_matrix_rdkit_descriptor_df(
 
         except Exception as e:
             print(f"Error processing {smi}: {e}")
-            failed_smiles.append(smi)
 
-    df = pd.DataFrame(feature_data)
-    return df, failed_smiles
+    return feature_data
 
 
 

@@ -244,46 +244,26 @@ def compute_flattened_coulomb_matrix_features(
 
 
 
-def compute_eem_charges(
-    smiles_list: List[str]
-) -> Tuple[pd.DataFrame, List[str]]:
+def compute_eem_charge_features(mols: List[Tuple[str, Chem.Mol]]) -> Tuple[List[Dict[str, float]], int]:
     """
-    Compute EEM partial atomic charges for a list of SMILES strings.
-
-    This function embeds each molecule in 3D using ETKDG, then calculates
-    electronegativity equalization method (EEM) charges per atom. The output
-    is a DataFrame where each row corresponds to a molecule, and columns are
-    named EEM_0, EEM_1, ..., up to the max number of atoms encountered.
+    Compute EEM charges for a list of valid molecules.
 
     Parameters
     ----------
-    smiles_list : List[str]
-        List of SMILES strings to compute EEM charges for.
+    mols : List[Tuple[str, Chem.Mol]]
+        List of (SMILES, RDKit Mol) tuples.
 
     Returns
     -------
-    Tuple[pandas.DataFrame, List[str]]
-        - DataFrame with columns: SMILES, EEM_0, EEM_1, ..., EEM_N
-        - List of invalid or failed SMILES strings
+    Tuple[List[Dict[str, float]], int]
+        List of charge rows and max number of atoms encountered.
     """
     charge_data = []
-    failed = []
     max_atoms = 0
 
-    for smi in smiles_list:
-        mol = Chem.MolFromSmiles(smi)
-        if mol is None:
-            failed.append(smi)
-            continue
-
-        mol = Chem.AddHs(mol)
-        if AllChem.EmbedMolecule(mol, AllChem.ETKDG()) != 0:
-            failed.append(smi)
-            continue
-
+    for smi, mol in mols:
         try:
-            charges = rdMolDescriptors.CalcEEMcharges(mol, confId=0)
-            charges = list(charges)
+            charges = list(rdMolDescriptors.CalcEEMcharges(mol, confId=0))
             max_atoms = max(max_atoms, len(charges))
             row = {"SMILES": smi}
             for i, c in enumerate(charges):
@@ -291,15 +271,7 @@ def compute_eem_charges(
             charge_data.append(row)
         except Exception as e:
             print(f"Error processing {smi}: {e}")
-            failed.append(smi)
 
-    # Pad missing charge columns with NaN
-    df = pd.DataFrame(charge_data)
-    for i in range(max_atoms):
-        col = f"EEM_{i}"
-        if col not in df.columns:
-            df[col] = np.nan
-
-    return df, failed
+    return charge_data, max_atoms
 
 
